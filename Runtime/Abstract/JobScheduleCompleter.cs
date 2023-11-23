@@ -6,19 +6,19 @@ namespace JobIt.Runtime.Abstract
 {
     public abstract class JobScheduleCompleter : MonoBehaviour
     {
-        public JobHandle Job { get => _handle; set { _handle = value; _handleSet = true; } }
-        protected bool _handleSet = false;
-        protected JobHandle _handle;
+        public JobHandle Job { get => Handle; set { Handle = value; HandleSet = true; } }
+        protected bool HandleSet = false;
+        protected JobHandle Handle;
         public delegate void CompleteEvent();
         public event CompleteEvent OnComplete;
 
         protected virtual void CompleteJob()
         {
-            if (!_handleSet) return;
+            if (!HandleSet) return;
             Profiler.BeginSample("On Job Complete");
-            _handle.Complete();
+            Handle.Complete();
             OnComplete?.Invoke();
-            _handleSet = false;
+            HandleSet = false;
             Profiler.EndSample();
         }
 

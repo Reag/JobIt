@@ -8,58 +8,102 @@ using UnityEngine.TestTools;
 
 namespace JobIt.Runtime.Abstract
 {
+    /// <summary>
+    /// The core logic for an UpdateJob. Provides the base functionality to allow for a simplified job system
+    /// </summary>
+    /// <typeparam name="T">The data required to register to this job. This data should be managed internally via NativeContainers.
+    /// T does NOT have to pass burst tests.</typeparam>
     public abstract class UpdateJob<T> : MonoBehaviour, IUpdateJob where T : struct
     {
+        /// <summary>
+        /// Represents a queued action to be performed next time the job is scheduled
+        /// </summary>
         private struct QueueItem
         {
-            public JobDataAction action;
-            public MonoBehaviour owner;
-            public T data;
+            public JobDataAction JobAction;
+            public Component Owner;
+            public T Data;
         }
 
+        /// <summary>
+        /// Returns a reference to the GameObject the job is attached to.
+        /// </summary>
+        /// <returns>The GameObject this job is attached to, or null if disposed</returns>
         public GameObject GetGameObject()
         {
             return (IsDisposed) ? null : gameObject;
         }
 
-        public int JobSize { get => ownerList.Count; }
+        /// <summary>
+        /// Number of Components currently subscribed to this job
+        /// </summary>
+        public int JobSize => OwnerList.Count;
 
-        protected List<MonoBehaviour> ownerList = new();
-        public virtual bool IsRunning { get => !_handle.IsCompleted; }
+        protected List<Component> OwnerList = new();
+        public virtual bool IsRunning => !_isCompleted;
+        /// <summary>
+        /// Invoked as the final step of completing a job. Data is safe to read at this point
+        /// </summary>
         public Action OnJobComplete;
-        public virtual bool CanRunJob { get => true; }
+
+        /// <summary>
+        /// Public property to allow user controlled disabling of a job, such as if the game is paused
+        /// </summary>
+        public virtual bool CanRunJob => true;
         public bool IsDisposed { get; private set; }
 
+        /// <summary>
+        /// Defines the execution order of the job when managed by the UpdateJobScheduler. Lower values will execute first
+        /// </summary>
         protected abstract int JobPriority { get; }
         private JobHandle _handle = default;
+        private bool _isCompleted = true;
         private readonly Queue<QueueItem> _actionQueue = new();
         //This maps HashCodes to list indexes
         private readonly Dictionary<int, int> _hashToIndexLookup = new();
 
+        /// <summary>
+        /// Called when the job is disposed. Be sure to clean up any NativeContainers allocated or you will have a memory leak!
+        /// </summary>
         protected abstract void DisposeLogic();
 
-        public virtual void WithdrawItem(MonoBehaviour o)
+        /// <summary>
+        /// Remove a registered Component from the UpdateJob. Takes effect the next time the job is scheduled
+        /// </summary>
+        /// <param name="o">The Component to withdraw</param>
+        public virtual void WithdrawItem(Component o)
         {
-            _actionQueue.Enqueue(new QueueItem { owner = o, action = JobDataAction.Remove, data = default });
+            _actionQueue.Enqueue(new QueueItem { Owner = o, JobAction = JobDataAction.Remove, Data = default });
         }
 
         /// <summary>
-        /// A Late Update Job must define its parameters for its args, if it has any. 
-        /// Should you see this tooltip, a job has not been commented correctly
+        /// Register a Component to the UpdateJob. Takes effect the next time the job is scheduled
         /// </summary>
-        /// <param name="o">The game object to be registered</param>
-        /// <param name="data">Some struct of params</param>
-        public virtual void RegisterItem(MonoBehaviour o, T data)
+        /// <param name="o">The Component to be registered</param>
+        /// <param name="data">Some struct that will be used as a data element in the job</param>
+        public virtual void RegisterItem(Component o, T data)
         {
-            _actionQueue.Enqueue(new QueueItem { owner = o, action = JobDataAction.Add, data = data });
+            _actionQueue.Enqueue(new QueueItem { Owner = o, JobAction = JobDataAction.Add, Data = data });
         }
 
-        public virtual void UpdateItem(MonoBehaviour o, T data)
+        /// <summary>
+        /// Update the data for a Component in the UpdateJob. Takes effect the next time the job is scheduled.
+        /// WARNING: this mean that stale data will be in the jobs internal buffers until ScheduleJob is called
+        /// </summary>
+        /// <param name="o">The Component to be updated</param>
+        /// <param name="data">The data to update with</param>
+        public virtual void UpdateItem(Component o, T data)
         {
-            _actionQueue.Enqueue(new QueueItem { owner = o, action = JobDataAction.Update, data = data});
+            _actionQueue.Enqueue(new QueueItem { Owner = o, JobAction = JobDataAction.Update, Data = data });
         }
 
-        public virtual bool TryReadItem(MonoBehaviour o, out T data)
+        /// <summary>
+        /// Tries to read the current data for a Component registered to this UpdateJob. Will fail if the UpdateJob is currently running.
+        /// </summary>
+        /// <param name="o">The Component to read</param>
+        /// <param name="data">The data associated with the Component</param>
+        /// <returns>True if the data could be read, false otherwise (Job is Running or Component is not in List)</returns>
+        public virtual bool TryReadItem(Component o, out T data)
         {
             if (IsRunning)
             {
@@ -67,7 +111,7 @@ namespace JobIt.Runtime.Abstract
                 data = default;
                 return false;
             }
-            if (_hashToIndexLookup.TryGetValue(o.GetHashCode(), out int i))
+            if (_hashToIndexLookup.TryGetValue(o.GetHashCode(), out var i))
             {
                 data = ReadJobDataAtIndex(i);
                 return true;
@@ -76,22 +120,19 @@ namespace JobIt.Runtime.Abstract
             return false;
         }
 
-
-        public JobHandle StartJob(JobHandle dependency = default)
+        /// <summary>
+        /// Starts the UpdateJob.
+        /// </summary>
+        /// <param name="dependsOn">The JobHandle that this job will depend on. Optional</param>
+        /// <returns>The JobHandle for this job</returns>
+        public JobHandle StartJob(JobHandle dependsOn = default)
         {
             _handle.Complete();
-            if (IsDisposed || !CanRunJob) return dependency;
-            try
-            {
-                ProcessQueue();
-                _handle = ScheduleJob(dependency);
-                return _handle;
-            } 
-            catch (Exception e)
-            {
-                Debug.LogWarning($"Exception in job {GetType()}: " + e);
-                return dependency;
-            }
+            if (IsDisposed || !CanRunJob) return dependsOn;
+            ProcessQueue();
+            _handle = ScheduleJob(dependsOn);
+            _isCompleted = false;
+            return _handle;
         }
 
         private void ProcessQueue()
@@ -99,11 +140,11 @@ namespace JobIt.Runtime.Abstract
             while (_actionQueue.Count > 0)
             {
                 var action = _actionQueue.Dequeue();
-                var e = action.owner;
-                int hash = e.GetHashCode();
+                var e = action.Owner;
+                var hash = e.GetHashCode();
                 if (e == null)
                 {
-                    if(_hashToIndexLookup.TryGetValue(hash, out int i))
+                    if (_hashToIndexLookup.TryGetValue(hash, out var i))
                     {
                         RemoveJobDataAndSwapBack(i);
                         RemoveAndSwapBackInternal(i);
@@ -111,8 +152,8 @@ namespace JobIt.Runtime.Abstract
                     continue;
                 }
                 //index -1 -> not in HashMap
-                int index = _hashToIndexLookup.TryGetValue(hash, out int v) ? v : -1;
-                switch (action.action)
+                var index = _hashToIndexLookup.TryGetValue(hash, out var v) ? v : -1;
+                switch (action.JobAction)
                 {
                     case JobDataAction.Remove:
                         if (index < 0)
@@ -124,72 +165,94 @@ namespace JobIt.Runtime.Abstract
                         RemoveAndSwapBackInternal(index);
                         break;
                     case JobDataAction.Add when index >= 0:
-                    case JobDataAction.Update when index >=0:
-                        UpdateJobData(index, action.data);
+                    case JobDataAction.Update when index >= 0:
+                        UpdateJobData(index, action.Data);
                         break;
                     case JobDataAction.Add:
-                        if (_hashToIndexLookup.ContainsKey(hash))
-                        {
-                            Debug.LogWarning($"Attempted to add a job that is already added to {GetType()}", this);
-                            return;
-                        }
-                        ownerList.Add(e);
-                        _hashToIndexLookup.Add(hash, ownerList.Count - 1);
-                        AddJobData(action.data);
+                        OwnerList.Add(e);
+                        _hashToIndexLookup.Add(hash, OwnerList.Count - 1);
+                        AddJobData(action.Data);
                         break;
                     case JobDataAction.Update:
                         Debug.LogWarning($"Attempted to update job data for an unregistered job element in {GetType()}", this);
-                        break;
-                    default:
                         break;
                 }
             }
         }
 
+        /// <summary>
+        /// Adds the values contained in data to the jobs internal NativeContainers. Implementation is left abstract
+        /// </summary>
+        /// <param name="data">struct used to populate the internal NativeContainers</param>
         protected abstract void AddJobData(T data);
 
+        /// <summary>
+        /// Reads the values at an index of the internal NativeContainers and assembles a struct of type T that represents them. Implementation is left abstract
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns>A struct of type T representing the data at the requested index</returns>
         protected abstract T ReadJobDataAtIndex(int index);
 
         private void RemoveAndSwapBackInternal(int index)
         {
-            int hashToRemove = ownerList[index].GetHashCode();
-            int lastIndexHash = 0;
-            if (ownerList.Count > 0)
+            var hashToRemove = OwnerList[index].GetHashCode();
+            var lastIndexHash = 0;
+            if (OwnerList.Count > 0)
             {
-                lastIndexHash = ownerList[^1].GetHashCode();
+                lastIndexHash = OwnerList[^1].GetHashCode();
             }
 
             _hashToIndexLookup.Remove(hashToRemove);
-            if(_hashToIndexLookup.ContainsKey(lastIndexHash))
+            if (_hashToIndexLookup.ContainsKey(lastIndexHash))
                 _hashToIndexLookup[lastIndexHash] = index;
-            ownerList.RemoveAtSwapBack(index);
+            OwnerList.RemoveAtSwapBack(index);
         }
 
         /// <summary>
-        /// ALL operations here should follow REMOVE AND SWAP BACK
-        /// failure to do so will make the job fail to run correctly
+        /// Removes and swaps back the data at an index of the internal NativeContainers. Implementation is left abstract.
+        /// WARNING: Remove and RemoveAndSwapBack are different operations. Failure to implement a RemoveAndSwapBack operation here will break the job!
         /// </summary>
         /// <param name="index"></param>
         protected abstract void RemoveJobDataAndSwapBack(int index);
 
+        /// <summary>
+        /// Update the NativeContainers at an index with some new data. Implementation is left abstract.
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="data">struct used to update the internal NativeContainers</param>
         protected abstract void UpdateJobData(int index, T data);
 
+        /// <summary>
+        /// Completes the job and allows reading of job data.
+        /// </summary>
         public void EndJob()
         {
             _handle.Complete();
+            _isCompleted = true;
             if (IsDisposed) return;
             CompleteJob();
             OnJobComplete?.Invoke();
         }
 
-        protected abstract JobHandle ScheduleJob(JobHandle dependency = default);
+        /// <summary>
+        /// The actual scheduling of the job. This will create the JobStruct, load it with data from the NativeContainers, and Schedule it. Implementation is left abstract
+        /// </summary>
+        /// <param name="dependsOn">previous handles that this job should depend on</param>
+        /// <returns>the job handle created from scheduling the job</returns>
+        protected abstract JobHandle ScheduleJob(JobHandle dependsOn = default);
 
-        protected abstract void CompleteJob();
+        /// <summary>
+        /// Called when a job has ended. After this, OnJobComplete is invoked
+        /// </summary>
+        protected virtual void CompleteJob()
+        {
+        }
 
         [ExcludeFromCoverage]
         public virtual void Awake()
         {
 #if UNITY_EDITOR
+            //We use this to prevent memory leaks when unexpectedly entering or exiting playmode.
             UnityEditor.EditorApplication.playModeStateChanged += PlayModeStateChange;
 #endif
         }
@@ -206,24 +269,30 @@ namespace JobIt.Runtime.Abstract
             catch
             {
                 //Catch and release
-            } 
+            }
             finally
             {
+                //Force a dispose of the job data when the playmode state changes
+                //This prevents the native containers from leaking when in the editor.
                 Dispose();
             }
         }
 #endif
+        [ExcludeFromCoverage]
         protected virtual void OnDestroy()
         {
             Dispose();
         }
 
-        public virtual void Dispose()
+        /// <summary>
+        /// Dispose of this job, cleaning up all data associated with it
+        /// </summary>
+        public void Dispose()
         {
             IsDisposed = true;
             EndJob();
             _actionQueue.Clear();
-            ownerList.Clear();
+            OwnerList.Clear();
             _hashToIndexLookup.Clear();
             DisposeLogic();
             OnJobComplete = null;

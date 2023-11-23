@@ -8,43 +8,44 @@ namespace JobIt.Runtime.Impl.JobScheduler
     {
         #region Singleton Setup
         private UpdateJobScheduler() { }
-        private static UpdateJobScheduler Instance { get => Nested.instance; }
+        private static UpdateJobScheduler Instance => Nested.Instance;
+
         private class Nested { 
             static Nested() { }
-            internal static UpdateJobScheduler instance = new();
+            internal static UpdateJobScheduler Instance = new();
             //Force Reset for unity load
             [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
             static void PlaymodeInit()
             {
-                instance = new();
+                Instance = new UpdateJobScheduler();
             }
         }
         #endregion
 
-        private readonly Dictionary<System.Type, IUpdateJob> jobObjectLookup = new();
+        private readonly Dictionary<System.Type, IUpdateJob> _jobObjectLookup = new();
 
-        public static void Register<T,S>(MonoBehaviour o, S args) where T : UpdateJob<S> where S : struct
+        public static void Register<T,TS>(MonoBehaviour o, TS args) where T : UpdateJob<TS> where TS : struct
         {
             if (!Application.isPlaying || o == null) 
                 return;
-            if(!Instance.jobObjectLookup.TryGetValue(typeof(T), out var job))
+            if(!Instance._jobObjectLookup.TryGetValue(typeof(T), out var job))
             {
                 var jobObject = new GameObject($"{typeof(T)}")
                 {
                     hideFlags = HideFlags.HideAndDontSave
                 };
-                GameObject.DontDestroyOnLoad(jobObject);
+                Object.DontDestroyOnLoad(jobObject);
                 job = jobObject.AddComponent<T>();
-                Instance.jobObjectLookup[typeof(T)] = job;
+                Instance._jobObjectLookup[typeof(T)] = job;
             }
             (job as T)?.RegisterItem(o, args);
         }
 
-        public static void Withdraw<T,S>(MonoBehaviour o) where T : UpdateJob<S> where S : struct
+        public static void Withdraw<T,TS>(MonoBehaviour o) where T : UpdateJob<TS> where TS : struct
         {
             if (!Application.isPlaying || o == null) 
                 return;
-            if (!Instance.jobObjectLookup.TryGetValue(typeof(T), out var job))
+            if (!Instance._jobObjectLookup.TryGetValue(typeof(T), out var job))
             {
                 Debug.LogWarning($"Attempted to Withdraw from a non existing job of type{typeof(T)}!", o);
                 return;
@@ -52,11 +53,11 @@ namespace JobIt.Runtime.Impl.JobScheduler
             (job as T)?.WithdrawItem(o);
         }
 
-        public static void UpdateJobData<T,S>(MonoBehaviour o, S args) where T : UpdateJob<S> where S : struct
+        public static void UpdateJobData<T,TS>(MonoBehaviour o, TS args) where T : UpdateJob<TS> where TS : struct
         {
             if (!Application.isPlaying || o == null)
                 return;
-            if (!Instance.jobObjectLookup.TryGetValue(typeof(T), out var job))
+            if (!Instance._jobObjectLookup.TryGetValue(typeof(T), out var job))
             {
                 Debug.LogWarning($"Attempted to UpdateJobData for a non existing job of type {typeof(T)}!", o);
                 return;
@@ -64,23 +65,23 @@ namespace JobIt.Runtime.Impl.JobScheduler
             (job as T)?.UpdateItem(o, args);
         }
 
-        public static T GetJobObject<T,S>() where T : UpdateJob<S> where S :struct
+        public static T GetJobObject<T,TS>() where T : UpdateJob<TS> where TS :struct
         {
-            if (Instance.jobObjectLookup.TryGetValue(typeof(T), out var job))
+            if (Instance._jobObjectLookup.TryGetValue(typeof(T), out var job))
                 return job as T;
             return null;
         }
 
-        public static System.Action GetJobCompleteEvent<T, S>() where T : UpdateJob<S> where S : struct
+        public static System.Action GetJobCompleteEvent<T, TS>() where T : UpdateJob<TS> where TS : struct
         {
-            var job = GetJobObject<T, S>();
+            var job = GetJobObject<T, TS>();
             if (job == null) return null;
             return job.OnJobComplete;
         }
 
         public static void CleanJobs()
         {
-            var jobs = Instance.jobObjectLookup.Values;
+            var jobs = Instance._jobObjectLookup.Values;
             foreach(var j in jobs)
             {
                 if (j == null) continue;
@@ -89,10 +90,10 @@ namespace JobIt.Runtime.Impl.JobScheduler
                 if (g != null)
                 {
                     
-                    GameObject.Destroy(g);
+                    Object.Destroy(g);
                 }
             }
-            Instance.jobObjectLookup.Clear();
+            Instance._jobObjectLookup.Clear();
         }
     }
 }

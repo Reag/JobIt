@@ -20,14 +20,12 @@ namespace JobIt.Runtime.Abstract
         {
             get
             {
-                if (_instance == null)
-                {
-                    var obj = new GameObject {
-                        hideFlags = HideFlags.HideAndDontSave
-                    };
-                    DontDestroyOnLoad(obj);
-                    _instance = obj.AddComponent<TInvoker>();
-                }
+                if (_instance != null) return _instance;
+                var obj = new GameObject {
+                    hideFlags = HideFlags.HideAndDontSave
+                };
+                DontDestroyOnLoad(obj);
+                _instance = obj.AddComponent<TInvoker>();
                 return _instance;
             }
         }
@@ -38,22 +36,21 @@ namespace JobIt.Runtime.Abstract
         private JobScheduleCompleter _completer;
         protected struct OrderedJob : IComparable<OrderedJob>
         {
-            public int priority;
-            public IUpdateJob job;
+            public int Priority;
+            public IUpdateJob Job;
 
             public readonly int CompareTo(OrderedJob other)
             {
-                return priority.CompareTo(other.priority);
+                return Priority.CompareTo(other.Priority);
             }
         }
 
-        protected List<OrderedJob> _jobList;
-        protected NativeList<JobHandle> _currentHandles;
+        protected List<OrderedJob> JobList;
+        protected NativeList<JobHandle> CurrentHandles;
 
         protected virtual void Awake()
         {
-            _jobList = new List<OrderedJob>();
-            
+            JobList = new List<OrderedJob>();
         }
 
         protected virtual void OnDestroy()
@@ -71,59 +68,62 @@ namespace JobIt.Runtime.Abstract
         protected virtual void OnJobComplete()
         {
             IsRunning = false;
-            for (int i = 0; i < _jobList.Count; i++)
+            for (var i = 0; i < JobList.Count; i++)
             {
-                _jobList[i].job.EndJob();
+                JobList[i].Job.EndJob();
             }
         }
 
         public virtual void RegisterJob(IUpdateJob job, int priority = 0)
         {
-            _jobList.Add(new OrderedJob { priority = priority, job = job });
-            _jobList.Sort();
+            JobList.Add(new OrderedJob { Priority = priority, Job = job });
+            JobList.Sort();
         }
 
         public virtual void WithdrawJob(IUpdateJob job)
         {
-            _jobList.RemoveAll(x => x.job == job);
-            _jobList.Sort();
+            JobList.RemoveAll(x => x.Job == job);
+            JobList.Sort();
         }
 
         protected virtual void RunJobs()
         {
-            if (_jobList.Count == 0 || IsRunning) return;
+            if (JobList.Count == 0 || IsRunning) return;
             IsRunning = true;
             CurrentDependency = default;
-            _currentHandles = new NativeList<JobHandle>(10, Allocator.Temp);
-            int currentPriority = _jobList[0].priority;
+            CurrentHandles = new NativeList<JobHandle>(10, Allocator.Temp);
+            var currentPriority = JobList[0].Priority;
 
-            for (int i = 0; i < _jobList.Count; i++)
+            for (var i = 0; i < JobList.Count; i++)
             {
-                int p = _jobList[i].priority;
-                var j = _jobList[i].job;
+                var p = JobList[i].Priority;
+                var j = JobList[i].Job;
                 if (p != currentPriority) //Priority has updated
                 {
                     currentPriority = p;
-                    CurrentDependency = JobHandle.CombineDependencies(_currentHandles.AsArray());
-                    _currentHandles.Clear();
+                    CurrentDependency = JobHandle.CombineDependencies(CurrentHandles.AsArray());
+                    CurrentHandles.Clear();
                 }
                 JobHandle h = default;
                 try
                 {
-                    Profiler.BeginSample("Start Job " + j.GetType());
+                    Profiler.BeginSample("JobScheduleInvoker: Start Job " + j.GetType());
                     h = j.StartJob(CurrentDependency);
-                    Profiler.EndSample();
-                } 
-                catch(Exception e)
+                }
+                catch (Exception e)
                 {
                     Debug.LogWarning($"Failed to run job {j.GetGameObject().name}! Stack Trace Below:");
                     Debug.LogWarning(e);
                 }
-                _currentHandles.Add(h);
+                finally
+                {
+                    Profiler.EndSample();
+                }
+                CurrentHandles.Add(h);
             }
-            CurrentDependency = JobHandle.CombineDependencies(_currentHandles.AsArray());
+            CurrentDependency = JobHandle.CombineDependencies(CurrentHandles.AsArray());
             _completer.Job = CurrentDependency;
-            _currentHandles.Dispose();
+            CurrentHandles.Dispose();
         }
     }
 }
