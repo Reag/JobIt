@@ -2,6 +2,7 @@
     "name": "DMS.JobIt.Tests.Editor",
     "rootNamespace": "",
     "references": [
+        "DMS.JobIt.Tests.Mocking",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "DMS.JobIt",

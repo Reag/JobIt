@@ -1,8 +1,6 @@
 using System;
-using JobIt.Runtime.Abstract;
+using JobIt.Tests.MockClasses;
 using NUnit.Framework;
-using Unity.Collections;
-using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
@@ -11,75 +9,6 @@ namespace JobIt.Tests.Editor
 {
     public class UpdateJobTests
     {
-        /// <summary>
-        /// This mock job doubles every data element in it when scheduled
-        /// </summary>
-        public class MockUpdateJob : UpdateJob<int>
-        {
-            public NativeList<int> ValueList;
-            public JobHandle Handle;
-
-            public override void Awake()
-            {
-                base.Awake();
-                ValueList = new NativeList<int>(Allocator.Persistent);
-            }
-            protected override int JobPriority => 0;
-
-            protected override void DisposeLogic()
-            {
-                ValueList.Dispose();
-            }
-
-            protected override void AddJobData(int data)
-            {
-                ValueList.Add(data);
-            }
-
-            protected override int ReadJobDataAtIndex(int index)
-            {
-                return ValueList[index];
-            }
-
-            protected override void RemoveJobDataAndSwapBack(int index)
-            {
-                ValueList.RemoveAtSwapBack(index);
-            }
-
-            protected override void UpdateJobData(int index, int data)
-            {
-                ValueList[index] = data;
-            }
-
-            protected override JobHandle ScheduleJob(JobHandle dependsOn = default)
-            {
-                var job = new DoubleValue
-                {
-                    Values = ValueList.AsArray()
-                };
-                Handle = job.Schedule(ValueList.Length, 1, dependsOn);
-                return Handle;
-            }
-
-            protected override void CompleteJob()
-            {
-                Handle.Complete();
-            }
-
-            public struct DoubleValue : IJobParallelFor
-            {
-                public NativeArray<int> Values;
-                public void Execute(int index)
-                {
-                    Values[index] *= 2;
-                }
-            }
-        }
-
-        public class MockMonoBehaviour : MonoBehaviour
-        {
-
-        }
 
         private MockUpdateJob _job;
         private GameObject _mockObject;
@@ -207,7 +136,7 @@ namespace JobIt.Tests.Editor
             _job.EndJob();
 
             //Assert
-            LogAssert.Expect(LogType.Warning, @"Attempted to remove an non existing job element from JobIt.Tests.Editor.UpdateJobTests+MockUpdateJob");
+            LogAssert.Expect(LogType.Warning, @"Attempted to remove an non existing job element from JobIt.Tests.MockClasses.MockUpdateJob");
             Assert.IsTrue(_job.JobSize == 1, "Wrong element removed from job");
         }
 

@@ -34,7 +34,8 @@ namespace JobIt.Runtime.Abstract
         public bool IsRunning { get; private set; }
         public JobHandle CurrentDependency { get; set; }
         private JobScheduleCompleter _completer;
-        protected struct OrderedJob : IComparable<OrderedJob>
+
+        public struct OrderedJob : IComparable<OrderedJob>
         {
             public int Priority;
             public IUpdateJob Job;

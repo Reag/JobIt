@@ -18,4 +18,11 @@
     "name": "Gilad O.",
     "email": "gilado@ostrin.org",
   }
+  "samples":[
+	{
+	  "displayName": "Inherit Transform Sample",
+	  "description": "Contains a sample job that allows for a virtual 'owner' in the transform hierarchy"
+	  "path": "Samples~/Inherit Transform"
+	}
+  ]
 }

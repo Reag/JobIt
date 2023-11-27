@@ -1,0 +1,17 @@
+{
+    "name": "DMS.JobIt.Tests.Mocking",
+    "rootNamespace": "",
+    "references": [
+        "GUID:acd9294a57730ef4481030bd22f3e060",
+        "GUID:e0cd26848372d4e5c891c569017e11f1"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
