@@ -10,7 +10,7 @@ namespace JobIt.Runtime.Abstract
     public interface IJobInvoker
     {
         public bool IsRunning { get; }
-        public void RegisterJob(IUpdateJob job, int priority = 0);
+        public void RegisterJob(IUpdateJob job, int executionOrder = 0);
         public void WithdrawJob(IUpdateJob job);
     }
 
@@ -24,7 +24,6 @@ namespace JobIt.Runtime.Abstract
                 var obj = new GameObject {
                     hideFlags = HideFlags.HideAndDontSave
                 };
-                DontDestroyOnLoad(obj);
                 _instance = obj.AddComponent<TInvoker>();
                 return _instance;
             }
@@ -37,12 +36,12 @@ namespace JobIt.Runtime.Abstract
 
         public struct OrderedJob : IComparable<OrderedJob>
         {
-            public int Priority;
+            public int ExecutionOrder;
             public IUpdateJob Job;
 
             public readonly int CompareTo(OrderedJob other)
             {
-                return Priority.CompareTo(other.Priority);
+                return ExecutionOrder.CompareTo(other.ExecutionOrder);
             }
         }
 
@@ -75,9 +74,9 @@ namespace JobIt.Runtime.Abstract
             }
         }
 
-        public virtual void RegisterJob(IUpdateJob job, int priority = 0)
+        public virtual void RegisterJob(IUpdateJob job, int executionOrder = 0)
         {
-            JobList.Add(new OrderedJob { Priority = priority, Job = job });
+            JobList.Add(new OrderedJob { ExecutionOrder = executionOrder, Job = job });
             JobList.Sort();
         }
 
@@ -93,11 +92,11 @@ namespace JobIt.Runtime.Abstract
             IsRunning = true;
             CurrentDependency = default;
             CurrentHandles = new NativeList<JobHandle>(10, Allocator.Temp);
-            var currentPriority = JobList[0].Priority;
+            var currentPriority = JobList[0].ExecutionOrder;
 
             for (var i = 0; i < JobList.Count; i++)
             {
-                var p = JobList[i].Priority;
+                var p = JobList[i].ExecutionOrder;
                 var j = JobList[i].Job;
                 if (p != currentPriority) //Priority has updated
                 {

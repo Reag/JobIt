@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using JobIt.Runtime.Abstract;
 using Unity.Collections;
 using Unity.Jobs;
@@ -101,6 +103,11 @@ namespace JobIt.Tests.MockClasses
         public void DeactivateCompleter()
         {
             DestroyImmediate(mockCompleter);
+        }
+
+        public List<IUpdateJob> GetJobList()
+        {
+            return JobList.Select(x => x.Job).ToList();
         }
     }
 }
