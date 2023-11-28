@@ -72,13 +72,6 @@ namespace JobIt.Runtime.Impl.JobScheduler
             return null;
         }
 
-        public static System.Action GetJobCompleteEvent<T, TS>() where T : UpdateJob<TS> where TS : struct
-        {
-            var job = GetJobObject<T, TS>();
-            if (job == null) return null;
-            return job.OnJobComplete;
-        }
-
         public static void CleanJobs()
         {
             var jobs = Instance._jobObjectLookup.Values;

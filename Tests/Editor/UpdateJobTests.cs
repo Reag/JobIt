@@ -9,7 +9,6 @@ namespace JobIt.Tests.Editor
 {
     public class UpdateJobTests
     {
-
         private MockUpdateJob _job;
         private GameObject _mockObject;
 

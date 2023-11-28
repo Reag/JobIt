@@ -289,6 +289,7 @@ namespace JobIt.Runtime.Abstract
         /// </summary>
         public void Dispose()
         {
+            if (IsDisposed) return;
             IsDisposed = true;
             EndJob();
             _actionQueue.Clear();
