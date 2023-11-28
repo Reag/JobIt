@@ -132,6 +132,34 @@ namespace JobIt.Tests.MockClasses
 
     }
 
+    public class MockExceptionUpdateToUpdateJob : UpdateToUpdateJob<int>
+    {
+        protected override void AddJobData(int data)
+        {
+            
+        }
+
+        protected override int ReadJobDataAtIndex(int index)
+        {
+            return 0;
+        }
+
+        protected override void RemoveJobDataAndSwapBack(int index)
+        {
+            
+        }
+
+        protected override JobHandle ScheduleJob(JobHandle dependsOn = default)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        protected override void UpdateJobData(int index, int data)
+        {
+            
+        }
+    }
+
     public class MockLateUpdateToLateUpdateJob : MockInvokedJob<LateUpdateJobInvoker>
     {
 

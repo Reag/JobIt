@@ -5,7 +5,8 @@
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "DMS.JobIt.Tests.Mocking",
-        "DMS.JobIt"
+        "DMS.JobIt",
+        "Unity.Collections"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -43,11 +43,11 @@ namespace JobIt.Runtime.Impl.JobScheduler
 
         public static void Withdraw<T,TS>(MonoBehaviour o) where T : UpdateJob<TS> where TS : struct
         {
-            if (!Application.isPlaying || o == null) 
+            if (!Application.isPlaying) 
                 return;
             if (!Instance._jobObjectLookup.TryGetValue(typeof(T), out var job))
             {
-                Debug.LogWarning($"Attempted to Withdraw from a non existing job of type{typeof(T)}!", o);
+                Debug.LogWarning($"Attempted to Withdraw from a non existing job of type {typeof(T)}!", o);
                 return;
             }
             (job as T)?.WithdrawItem(o);
@@ -70,6 +70,11 @@ namespace JobIt.Runtime.Impl.JobScheduler
             if (Instance._jobObjectLookup.TryGetValue(typeof(T), out var job))
                 return job as T;
             return null;
+        }
+
+        public static bool TryReadJobData<T, TS>(Component o, out TS data) where T : UpdateJob<TS> where TS : struct
+        {
+            return GetJobObject<T, TS>().TryReadItem(o, out data);
         }
 
         public static void CleanJobs()
