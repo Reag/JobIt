@@ -249,9 +249,7 @@ namespace JobIt.Runtime.Abstract
         /// <summary>
         /// Called when a job has ended. After this, OnJobComplete is invoked
         /// </summary>
-        protected virtual void CompleteJob()
-        {
-        }
+        protected abstract void CompleteJob();
 
         [ExcludeFromCoverage]
         public virtual void Awake()

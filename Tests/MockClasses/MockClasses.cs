@@ -41,11 +41,6 @@ namespace JobIt.Tests.MockClasses
             ValueList.RemoveAtSwapBack(index);
         }
 
-        protected override void UpdateJobData(int index, int data)
-        {
-            ValueList[index] = data;
-        }
-
         protected override JobHandle ScheduleJob(JobHandle dependsOn = default)
         {
             var job = new DoubleValue
@@ -102,11 +97,6 @@ namespace JobIt.Tests.MockClasses
             ValueList.RemoveAtSwapBack(index);
         }
 
-        protected override void UpdateJobData(int index, int data)
-        {
-            ValueList[index] = data;
-        }
-
         protected override JobHandle ScheduleJob(JobHandle dependsOn = default)
         {
             var job = new DoubleValue
@@ -156,11 +146,6 @@ namespace JobIt.Tests.MockClasses
         protected override JobHandle ScheduleJob(JobHandle dependsOn = default)
         {
             throw new System.NotImplementedException();
-        }
-
-        protected override void UpdateJobData(int index, int data)
-        {
-            
         }
     }
 

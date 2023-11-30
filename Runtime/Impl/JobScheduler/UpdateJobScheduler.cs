@@ -26,7 +26,7 @@ namespace JobIt.Runtime.Impl.JobScheduler
 
         public static void Register<T,TS>(MonoBehaviour o, TS args) where T : UpdateJob<TS> where TS : struct
         {
-            if (!Application.isPlaying || o == null) 
+            if (o == null) 
                 return;
             if(!Instance._jobObjectLookup.TryGetValue(typeof(T), out var job))
             {
@@ -43,9 +43,7 @@ namespace JobIt.Runtime.Impl.JobScheduler
 
         public static void Withdraw<T,TS>(MonoBehaviour o) where T : UpdateJob<TS> where TS : struct
         {
-            if (!Application.isPlaying) 
-                return;
-            if (!Instance._jobObjectLookup.TryGetValue(typeof(T), out var job))
+            if (!Instance._jobObjectLookup.TryGetValue(typeof(T), out var job) || job == null) //unity null check
             {
                 Debug.LogWarning($"Attempted to Withdraw from a non existing job of type {typeof(T)}!", o);
                 return;
@@ -57,7 +55,7 @@ namespace JobIt.Runtime.Impl.JobScheduler
         {
             if (!Application.isPlaying || o == null)
                 return;
-            if (!Instance._jobObjectLookup.TryGetValue(typeof(T), out var job))
+            if (!Instance._jobObjectLookup.TryGetValue(typeof(T), out var job) || job == null) //unity null check
             {
                 Debug.LogWarning($"Attempted to UpdateJobData for a non existing job of type {typeof(T)}!", o);
                 return;
