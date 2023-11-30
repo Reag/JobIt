@@ -75,9 +75,8 @@ namespace JobIt.Tests.MockClasses
     {
         public NativeList<int> ValueList;
 
-        public override void Awake()
+        protected override void BuildNativeContainers()
         {
-            base.Awake();
             ValueList = new NativeList<int>(Allocator.Persistent);
         }
         protected override int JobPriority => 0;
@@ -134,6 +133,11 @@ namespace JobIt.Tests.MockClasses
 
     public class MockExceptionUpdateToUpdateJob : UpdateToUpdateJob<int>
     {
+        protected override void BuildNativeContainers()
+        {
+
+        }
+
         protected override void AddJobData(int data)
         {
             

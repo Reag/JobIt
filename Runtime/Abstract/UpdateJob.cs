@@ -216,11 +216,16 @@ namespace JobIt.Runtime.Abstract
         protected abstract void RemoveJobDataAndSwapBack(int index);
 
         /// <summary>
-        /// Update the NativeContainers at an index with some new data. Implementation is left abstract.
+        /// Update the NativeContainers at an index with some new data. Default implementation is adding the element
+        /// to the end of the native containers, and then RemoveAndSwapBack with the requested index
         /// </summary>
-        /// <param name="index"></param>
+        /// <param name="index">location in the native containers to update</param>
         /// <param name="data">struct used to update the internal NativeContainers</param>
-        protected abstract void UpdateJobData(int index, T data);
+        protected virtual void UpdateJobData(int index, T data)
+        {
+            AddJobData(data);
+            RemoveJobDataAndSwapBack(index);
+        }
 
         /// <summary>
         /// Completes the job and allows reading of job data.

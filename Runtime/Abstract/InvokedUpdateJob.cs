@@ -8,15 +8,18 @@ namespace JobIt.Runtime.Abstract
         public sealed override bool IsRunning => Invoker.IsRunning;
         protected override int JobPriority => 0;
 
-        public override void Awake()
+        public sealed override void Awake()
         {
             base.Awake();
             if (Invoker == null)
             {
                 Invoker = JobScheduleInvoker<TInvoker>.Instance;
             }
+            BuildNativeContainers();
             Invoker.RegisterJob(this, JobPriority);
         }
+
+        protected abstract void BuildNativeContainers();
 
         protected sealed override void CompleteJob()
         {

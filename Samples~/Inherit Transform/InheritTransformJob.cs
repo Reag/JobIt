@@ -20,9 +20,8 @@ public class InheritTransformJob : UpdateToUpdateJob<InheritTransformJobElement>
 
     private JobHandle _handle;
 
-    public override void Awake()
+    protected override void BuildNativeContainers()
     {
-        base.Awake();
         _nativeChildren = new TransformAccessArray(1000);
         _nativeParents = new TransformAccessArray(1000);
         _localToWorlds = new NativeList<Matrix4x4>(Allocator.Persistent);
@@ -63,15 +62,6 @@ public class InheritTransformJob : UpdateToUpdateJob<InheritTransformJobElement>
         _localToWorlds.RemoveAtSwapBack(index);
         _nativeChildren.RemoveAtSwapBack(index);
         _nativeParents.RemoveAtSwapBack(index);
-    }
-
-    protected override void UpdateJobData(int index, InheritTransformJobElement data)
-    {
-        _nativeChildren.Add(data.Child);
-        _nativeChildren.RemoveAtSwapBack(index);
-        _nativeParents.Add(data.Parent);
-        _nativeParents.RemoveAtSwapBack(index);
-        _localToWorlds[index] = Matrix4x4.identity;
     }
 
     protected override InheritTransformJobElement ReadJobDataAtIndex(int index)
