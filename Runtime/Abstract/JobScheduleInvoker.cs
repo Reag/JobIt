@@ -4,9 +4,13 @@ using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.Profiling;
+using UnityEngine.TestTools;
 
 namespace JobIt.Runtime.Abstract
 {
+    /// <summary>
+    /// Simple interface to represent some kind of JobInvoker
+    /// </summary>
     public interface IJobInvoker
     {
         public bool IsRunning { get; }
@@ -14,8 +18,16 @@ namespace JobIt.Runtime.Abstract
         public void WithdrawJob(IUpdateJob job);
     }
 
+    /// <summary>
+    /// This Abstract Class represents some strategy for starting a managed job, typically via update.
+    /// Subclasses should self reference to allow singleton access to the invoker
+    /// </summary>
+    /// <typeparam name="TInvoker">A self reference to the type of the subclass inheriting from this class</typeparam>
     public abstract class JobScheduleInvoker<TInvoker> : MonoBehaviour where TInvoker: MonoBehaviour, IJobInvoker
     {
+        /// <summary>
+        /// Simple MonoBehaviour Singleton design pattern
+        /// </summary>
         public static TInvoker Instance
         {
             get
@@ -30,8 +42,17 @@ namespace JobIt.Runtime.Abstract
         }
         private static TInvoker _instance;
 
+        /// <summary>
+        /// Is the Invoker currently running a job?
+        /// </summary>
         public bool IsRunning { get; private set; }
+        /// <summary>
+        /// The last combined JobHandle that this Invoker began. Provided for safety in the editor.
+        /// </summary>
         public JobHandle CurrentDependency { get; set; }
+        /// <summary>
+        /// The Completer that will complete the JobHandle referenced in CurrentDependency
+        /// </summary>
         private JobScheduleCompleter _completer;
 
         public struct OrderedJob : IComparable<OrderedJob>
@@ -45,26 +66,43 @@ namespace JobIt.Runtime.Abstract
             }
         }
 
+        /// <summary>
+        /// Simple SortedList to organize our registered jobs by ExecutionOrder
+        /// </summary>
         protected List<OrderedJob> JobList;
+        
+        /// <summary>
+        /// Reusable memory block to allow us to combine job handles with the same ExecutionOrder
+        /// </summary>
         protected NativeList<JobHandle> CurrentHandles;
 
+        [ExcludeFromCoverage]
         protected virtual void Awake()
         {
             JobList = new List<OrderedJob>();
         }
 
+        [ExcludeFromCoverage] // Ensure safe exit when running in the editor
         protected virtual void OnDestroy()
         {
             CurrentDependency.Complete();
             Destroy(_completer);
         }
 
+        /// <summary>
+        /// Adds a particular Completer to this Invoker. Said Completer will manege ensuring the jobs complete according to its internal strategy.
+        /// </summary>
+        /// <typeparam name="T">The type of Completer to add</typeparam>
         protected virtual void AddCompleter<T>() where T : JobScheduleCompleter
         {
             _completer = gameObject.AddComponent<T>();
             _completer.OnComplete += OnJobComplete;
         }
 
+        /// <summary>
+        /// Called when the added Completer actually completes the job, setting IsRunning to false.
+        /// This is also when EndJob is called on all registered UpdateJobs
+        /// </summary>
         protected virtual void OnJobComplete()
         {
             IsRunning = false;

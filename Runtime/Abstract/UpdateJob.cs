@@ -63,6 +63,12 @@ namespace JobIt.Runtime.Abstract
         private readonly Dictionary<int, int> _hashToIndexLookup = new();
 
         /// <summary>
+        /// Called on Awake. This function should build all the native containers that the UpdateJob needs.
+        /// Anything built here should be Disposed of in the DisposeLogic function.
+        /// </summary>
+        protected abstract void BuildNativeContainers();
+
+        /// <summary>
         /// Called when the job is disposed. Be sure to clean up any NativeContainers allocated or you will have a memory leak!
         /// </summary>
         protected abstract void DisposeLogic();
@@ -135,6 +141,9 @@ namespace JobIt.Runtime.Abstract
             return _handle;
         }
 
+        /// <summary>
+        /// Process all actions before starting the job
+        /// </summary>
         private void ProcessQueue()
         {
             while (_actionQueue.Count > 0)
@@ -254,6 +263,7 @@ namespace JobIt.Runtime.Abstract
         [ExcludeFromCoverage]
         public virtual void Awake()
         {
+            BuildNativeContainers();
 #if UNITY_EDITOR
             //We use this to prevent memory leaks when unexpectedly entering or exiting playmode.
             UnityEditor.EditorApplication.playModeStateChanged += PlayModeStateChange;
@@ -281,7 +291,8 @@ namespace JobIt.Runtime.Abstract
             }
         }
 #endif
-        [ExcludeFromCoverage]
+
+        [ExcludeFromCoverage] // Ensure safe exit when running in the editor
         protected virtual void OnDestroy()
         {
             Dispose();

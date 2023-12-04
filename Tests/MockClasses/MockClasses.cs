@@ -14,12 +14,12 @@ namespace JobIt.Tests.MockClasses
         public NativeList<int> ValueList;
         public JobHandle Handle;
 
-        public override void Awake()
+        protected override int JobPriority => 0;
+
+        protected override void BuildNativeContainers()
         {
-            base.Awake();
             ValueList = new NativeList<int>(Allocator.Persistent);
         }
-        protected override int JobPriority => 0;
 
         protected override void DisposeLogic()
         {
