@@ -1,5 +1,5 @@
 {
-    "name": "com.DMS.JobIt",
+    "name": "com.dms.jobit",
     "version": "1.0.0",
     "displayName": "JobIt",
     "description": "A Unity JobSystem Manager",
