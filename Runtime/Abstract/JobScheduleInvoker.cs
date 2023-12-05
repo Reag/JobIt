@@ -5,6 +5,9 @@ using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.TestTools;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace JobIt.Runtime.Abstract
 {
@@ -41,6 +44,21 @@ namespace JobIt.Runtime.Abstract
             }
         }
         private static TInvoker _instance;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void PlaymodeInit()
+        {
+#if UNITY_EDITOR
+            //We use this to prevent memory leaks when unexpectedly entering or exiting playmode.
+            EditorApplication.playModeStateChanged += PlayModeStateChange;
+        }
+
+        private static void PlayModeStateChange(PlayModeStateChange obj)
+        {
+            if(_instance != null) DestroyImmediate(_instance.gameObject);
+#endif
+        }
+
 
         /// <summary>
         /// Is the Invoker currently running a job?
