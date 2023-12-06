@@ -33,7 +33,8 @@ namespace JobIt.Runtime.Impl.JobScheduler
 
             private static void PlayModeStateChange(PlayModeStateChange obj)
             {
-                CleanJobs();
+                if(obj is UnityEditor.PlayModeStateChange.EnteredEditMode or UnityEditor.PlayModeStateChange.ExitingEditMode)
+                    CleanJobs();
 #endif
             }
         }
