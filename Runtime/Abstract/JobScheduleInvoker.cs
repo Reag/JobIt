@@ -21,39 +21,13 @@ namespace JobIt.Runtime.Abstract
         public void WithdrawJob(IUpdateJob job);
     }
 
-    /// <summary>
-    /// A simple container class for the game object all the Invokers are attached to
-    /// </summary>
-    public abstract class JobScheduleInvokerSingleton : MonoBehaviour
-    {
-        /// <summary>
-        /// This game object will contain all the MonoBehaviour of all the Invokers.
-        /// This way, if we unexpectedly exit playmode in the editor, we can clean them up easily
-        /// </summary>
-        protected static GameObject InvokerObject;
-
-#if UNITY_EDITOR
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void PlaymodeInit()
-        {
-            //We use this to prevent memory leaks when unexpectedly entering or exiting playmode.
-            EditorApplication.playModeStateChanged += PlayModeStateChange;
-        }
-
-        private static void PlayModeStateChange(PlayModeStateChange obj)
-        {
-            if (InvokerObject == null) return;
-            DestroyImmediate(InvokerObject);
-        }
-#endif
-    }
 
     /// <summary>
     /// This Abstract Class represents some strategy for starting a managed job, typically via update.
     /// Subclasses should self reference to allow singleton access to the invoker
     /// </summary>
     /// <typeparam name="TInvoker">A self reference to the type of the subclass inheriting from this class</typeparam>
-    public abstract class JobScheduleInvoker<TInvoker> : JobScheduleInvokerSingleton where TInvoker : MonoBehaviour, IJobInvoker
+    public abstract class JobScheduleInvoker<TInvoker> : MonoBehaviour where TInvoker : MonoBehaviour, IJobInvoker
     {
         private static TInvoker _instance;
 
@@ -65,11 +39,14 @@ namespace JobIt.Runtime.Abstract
             get
             {
                 if (_instance != null) return _instance;
-                if (InvokerObject == null) InvokerObject = new GameObject
+                _instance = FindAnyObjectByType<TInvoker>(); //look for scene objects
+                if (_instance != null) return _instance;
+
+                var obj = new GameObject
                 {
                     hideFlags = HideFlags.HideAndDontSave
                 };
-                _instance = InvokerObject.AddComponent<TInvoker>();
+                _instance = obj.AddComponent<TInvoker>();
                 return _instance;
             }
         }
