@@ -1,6 +1,6 @@
 {
     "name": "com.dms.jobit",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "displayName": "JobIt",
     "description": "A Unity JobSystem Manager",
     "unity": "2022.3",

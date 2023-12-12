@@ -22,12 +22,41 @@ namespace JobIt.Runtime.Abstract
     }
 
     /// <summary>
+    /// A simple container class for the game object all the Invokers are attached to
+    /// </summary>
+    public abstract class JobScheduleInvokerSingleton : MonoBehaviour
+    {
+        /// <summary>
+        /// This game object will contain all the MonoBehaviour of all the Invokers.
+        /// This way, if we unexpectedly exit playmode in the editor, we can clean them up easily
+        /// </summary>
+        protected static GameObject InvokerObject;
+
+#if UNITY_EDITOR
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void PlaymodeInit()
+        {
+            //We use this to prevent memory leaks when unexpectedly entering or exiting playmode.
+            EditorApplication.playModeStateChanged += PlayModeStateChange;
+        }
+
+        private static void PlayModeStateChange(PlayModeStateChange obj)
+        {
+            if (InvokerObject == null) return;
+            DestroyImmediate(InvokerObject);
+        }
+#endif
+    }
+
+    /// <summary>
     /// This Abstract Class represents some strategy for starting a managed job, typically via update.
     /// Subclasses should self reference to allow singleton access to the invoker
     /// </summary>
     /// <typeparam name="TInvoker">A self reference to the type of the subclass inheriting from this class</typeparam>
-    public abstract class JobScheduleInvoker<TInvoker> : MonoBehaviour where TInvoker: MonoBehaviour, IJobInvoker
+    public abstract class JobScheduleInvoker<TInvoker> : JobScheduleInvokerSingleton where TInvoker : MonoBehaviour, IJobInvoker
     {
+        private static TInvoker _instance;
+
         /// <summary>
         /// Simple MonoBehaviour Singleton design pattern
         /// </summary>
@@ -36,29 +65,14 @@ namespace JobIt.Runtime.Abstract
             get
             {
                 if (_instance != null) return _instance;
-                var obj = new GameObject {
+                if (InvokerObject == null) InvokerObject = new GameObject
+                {
                     hideFlags = HideFlags.HideAndDontSave
                 };
-                _instance = obj.AddComponent<TInvoker>();
+                _instance = InvokerObject.AddComponent<TInvoker>();
                 return _instance;
             }
         }
-        private static TInvoker _instance;
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void PlaymodeInit()
-        {
-#if UNITY_EDITOR
-            //We use this to prevent memory leaks when unexpectedly entering or exiting playmode.
-            EditorApplication.playModeStateChanged += PlayModeStateChange;
-        }
-
-        private static void PlayModeStateChange(PlayModeStateChange obj)
-        {
-            if(_instance != null) DestroyImmediate(_instance.gameObject);
-#endif
-        }
-
 
         /// <summary>
         /// Is the Invoker currently running a job?
@@ -88,7 +102,7 @@ namespace JobIt.Runtime.Abstract
         /// Simple SortedList to organize our registered jobs by ExecutionOrder
         /// </summary>
         protected List<OrderedJob> JobList;
-        
+
         /// <summary>
         /// Reusable memory block to allow us to combine job handles with the same ExecutionOrder
         /// </summary>
@@ -130,18 +144,31 @@ namespace JobIt.Runtime.Abstract
             }
         }
 
+        /// <summary>
+        /// Register an IUpdateJob to this Invoker
+        /// </summary>
+        /// <param name="job">The IUpdateJob to be registered</param>
+        /// <param name="executionOrder">What execution order the IUpdateJob should have</param>
         public virtual void RegisterJob(IUpdateJob job, int executionOrder = 0)
         {
             JobList.Add(new OrderedJob { ExecutionOrder = executionOrder, Job = job });
             JobList.Sort();
         }
 
+        /// <summary>
+        /// Withdraw an IUpdateJob from this Invoker
+        /// </summary>
+        /// <param name="job">The IUpdateJob to withdraw</param>
         public virtual void WithdrawJob(IUpdateJob job)
         {
             JobList.RemoveAll(x => x.Job == job);
             JobList.Sort();
         }
 
+        /// <summary>
+        /// Internal logic for actually running the registered jobs. It processes the jobs by execution order, creating dependencies for each execution step.
+        /// If two jobs share an execution order, it will attempt to build a combined dependency.
+        /// </summary>
         protected virtual void RunJobs()
         {
             if (JobList.Count == 0 || IsRunning) return;
