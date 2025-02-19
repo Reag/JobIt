@@ -165,6 +165,8 @@ namespace JobIt.Runtime.Abstract
         {
             _handle.Complete(); //Ensure the previous run of this job is complete
             if (IsDisposed || !CanRunJob) return dependsOn;
+            //For jobs that are manually invoked, rather than managed through the invoker
+            if(_actionQueue.Count > 0) ProcessActionQueue();
             _handle = ScheduleJob(dependsOn);
             _isCompleted = false;
             return _handle;
