@@ -9,6 +9,7 @@ namespace JobIt.Runtime.Abstract
     /// </summary>
     public interface IUpdateJob : IDisposable
     {
+        internal void PreStartJob();
         public JobHandle StartJob(JobHandle dependsOn = default);
         public void EndJob();
         public GameObject GetGameObject();

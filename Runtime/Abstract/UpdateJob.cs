@@ -55,7 +55,7 @@ namespace JobIt.Runtime.Abstract
         /// <summary>
         /// Defines the execution order of the job when managed by the UpdateJobScheduler. Lower values will execute first
         /// </summary>
-        protected abstract int JobPriority { get; }
+        protected virtual int JobPriority { get; } = 0;
         private JobHandle _handle = default;
         private bool _isCompleted = true;
         private readonly Queue<QueueItem> _actionQueue = new();
@@ -127,24 +127,53 @@ namespace JobIt.Runtime.Abstract
         }
 
         /// <summary>
+        /// Wrapper to allow the interface to declare a function that users cant call directly from the interface
+        /// This way, users can define their own protected setup step without it accidentally being exposed publicly.
+        /// Called by the JobScheduleInvoker on all jobs as the last step before scheduling
+        /// </summary>
+        void IUpdateJob.PreStartJob()
+        {
+            PreStartJob_Internal();
+        }
+
+        /// <summary>
+        /// Manually process the queue before the job execution then call user code.
+        /// This is a work-around for Unity Issue UUM-86782
+        /// https://issuetracker.unity3d.com/issues/the-editor-freezes-when-schedulereadonly-of-ijobparallelfortransform-with-dependency-is-used
+        /// </summary>
+        private void PreStartJob_Internal()
+        {
+            ProcessActionQueue();
+            PreStartJob();
+        }
+
+        /// <summary>
+        /// Called before the JobScheduleInvoker actually starts running the jobs.
+        /// Put any code that needs to execute before a job runs here
+        /// </summary>
+        protected virtual void PreStartJob()
+        {
+            //Do nothing
+        }
+
+        /// <summary>
         /// Starts the UpdateJob.
         /// </summary>
         /// <param name="dependsOn">The JobHandle that this job will depend on. Optional</param>
         /// <returns>The JobHandle for this job</returns>
         public JobHandle StartJob(JobHandle dependsOn = default)
         {
-            _handle.Complete();
+            _handle.Complete(); //Ensure the previous run of this job is complete
             if (IsDisposed || !CanRunJob) return dependsOn;
-            ProcessQueue();
             _handle = ScheduleJob(dependsOn);
             _isCompleted = false;
             return _handle;
         }
 
         /// <summary>
-        /// Process all actions before starting the job
+        /// Process all actions (Add, Remove, or Update) before starting the job
         /// </summary>
-        private void ProcessQueue()
+        private void ProcessActionQueue()
         {
             while (_actionQueue.Count > 0)
             {
@@ -161,7 +190,7 @@ namespace JobIt.Runtime.Abstract
                     continue;
                 }
                 //index -1 -> not in HashMap
-                var index = _hashToIndexLookup.TryGetValue(hash, out var v) ? v : -1;
+                var index = _hashToIndexLookup.GetValueOrDefault(hash, -1);
                 switch (action.JobAction)
                 {
                     case JobDataAction.Remove:
@@ -185,6 +214,8 @@ namespace JobIt.Runtime.Abstract
                     case JobDataAction.Update:
                         Debug.LogWarning($"Attempted to update job data for an unregistered job element in {GetType()}", this);
                         break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
                 }
             }
         }
@@ -226,7 +257,8 @@ namespace JobIt.Runtime.Abstract
 
         /// <summary>
         /// Update the NativeContainers at an index with some new data. Default implementation is adding the element
-        /// to the end of the native containers, and then RemoveAndSwapBack with the requested index
+        /// to the end of the native containers, and then RemoveAndSwapBack with the requested index.
+        /// Can be safely overwritten for more specialized cases as needed
         /// </summary>
         /// <param name="index">location in the native containers to update</param>
         /// <param name="data">struct used to update the internal NativeContainers</param>

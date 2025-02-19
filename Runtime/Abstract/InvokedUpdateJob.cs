@@ -14,7 +14,6 @@ namespace JobIt.Runtime.Abstract
         /// This job is considered running with the Invoker is running
         /// </summary>
         public sealed override bool IsRunning => Invoker.IsRunning;
-        protected override int JobPriority => 0;
 
         public sealed override void Awake()
         {
