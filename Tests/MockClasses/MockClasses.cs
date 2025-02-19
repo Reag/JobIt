@@ -5,7 +5,6 @@ using JobIt.Runtime.Impl.JobScheduler;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace JobIt.Tests.MockClasses
 {
@@ -13,8 +12,6 @@ namespace JobIt.Tests.MockClasses
     {
         public NativeList<int> ValueList;
         public JobHandle Handle;
-
-        protected override int JobPriority => 0;
 
         protected override void BuildNativeContainers()
         {

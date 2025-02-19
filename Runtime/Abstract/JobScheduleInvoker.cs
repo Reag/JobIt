@@ -154,6 +154,12 @@ namespace JobIt.Runtime.Abstract
             CurrentHandles = new NativeList<JobHandle>(10, Allocator.Temp);
             var currentPriority = JobList[0].ExecutionOrder;
 
+            // Execute the job setup step. 
+            for (var i = 0; i < JobList.Count; i++)
+            {
+                JobList[i].Job.PreStartJob();
+            }
+
             for (var i = 0; i < JobList.Count; i++)
             {
                 var p = JobList[i].ExecutionOrder;
