@@ -14,10 +14,21 @@ namespace JobIt.Runtime.Abstract
         /// This is the JobHandle for the Completer to manage.
         /// It will be completed when CompleteJob is called.
         /// </summary>
-        public JobHandle Job { get => Handle; set { Handle = value; HandleSet = true; } }
+        public JobHandle Job
+        {
+            get => Handle;
+            set
+            {
+                Handle = value;
+                HandleSet = true;
+            }
+        }
+
         protected bool HandleSet = false;
         protected JobHandle Handle;
+
         public delegate void CompleteEvent();
+
         /// <summary>
         /// This Event is invoked whenever the Job has been set and then completed.
         /// It will not be invoked if CompleteJob() is called on an already completed job.
@@ -38,7 +49,7 @@ namespace JobIt.Runtime.Abstract
             Profiler.EndSample();
         }
 
-        [ExcludeFromCoverage] 
+        [ExcludeFromCoverage]
         // Ensure safe exit when running in the editor
         protected virtual void OnDestroy()
         {

@@ -1,6 +1,6 @@
 {
     "name": "com.dms.jobit",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "displayName": "JobIt",
     "description": "A Unity JobSystem Manager",
     "unity": "2022.3",
@@ -23,6 +23,11 @@
             "displayName": "Inherit Transform Sample",
             "description": "Contains a sample job that allows for a virtual 'owner' in the transform hierarchy",
             "path": "Samples~/Inherit Transform"
+        },
+		{
+            "displayName": "Job Wrapper Sample",
+            "description": "Contains a sample job wrapper that allows for easier job management",
+            "path": "Samples~/Job Wrapper"
         }
     ]
 }

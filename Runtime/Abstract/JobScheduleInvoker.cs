@@ -38,9 +38,15 @@ namespace JobIt.Runtime.Abstract
         {
             get
             {
-                if (_instance != null) return _instance;
+                if (_instance != null)
+                {
+                    return _instance;
+                }
                 _instance = FindAnyObjectByType<TInvoker>(); //look for scene objects
-                if (_instance != null) return _instance;
+                if (_instance != null)
+                {
+                    return _instance;
+                }
 
                 var obj = new GameObject
                 {
@@ -55,10 +61,12 @@ namespace JobIt.Runtime.Abstract
         /// Is the Invoker currently running a job?
         /// </summary>
         public bool IsRunning { get; private set; }
+
         /// <summary>
         /// The last combined JobHandle that this Invoker began. Provided for safety in the editor.
         /// </summary>
-        public JobHandle CurrentDependency { get; set; }
+        public JobHandle CurrentDependency { get; private set; }
+
         /// <summary>
         /// The Completer that will complete the JobHandle referenced in CurrentDependency
         /// </summary>
@@ -148,48 +156,60 @@ namespace JobIt.Runtime.Abstract
         /// </summary>
         protected virtual void RunJobs()
         {
-            if (JobList.Count == 0 || IsRunning) return;
+            if (JobList.Count == 0 || IsRunning)
+            {
+                return;
+            }
             IsRunning = true;
             CurrentDependency = default;
             CurrentHandles = new NativeList<JobHandle>(10, Allocator.Temp);
-            var currentPriority = JobList[0].ExecutionOrder;
-
-            // Execute the job setup step. 
-            for (var i = 0; i < JobList.Count; i++)
+            try
             {
-                JobList[i].Job.PreStartJob();
-            }
+                var currentPriority = JobList[0].ExecutionOrder;
 
-            for (var i = 0; i < JobList.Count; i++)
-            {
-                var p = JobList[i].ExecutionOrder;
-                var j = JobList[i].Job;
-                if (p != currentPriority) //Priority has updated
+                // Execute the job setup step. 
+                for (var i = 0; i < JobList.Count; i++)
                 {
-                    currentPriority = p;
-                    CurrentDependency = JobHandle.CombineDependencies(CurrentHandles.AsArray());
-                    CurrentHandles.Clear();
+                    JobList[i].Job.PreStartJob();
                 }
-                JobHandle h = default;
-                try
+
+                for (var i = 0; i < JobList.Count; i++)
                 {
-                    Profiler.BeginSample("JobScheduleInvoker: Start Job " + j.GetType());
-                    h = j.StartJob(CurrentDependency);
+                    var p = JobList[i].ExecutionOrder;
+                    var j = JobList[i].Job;
+                    if (p != currentPriority) //Priority has updated
+                    {
+                        currentPriority = p;
+                        CurrentDependency = JobHandle.CombineDependencies(CurrentHandles.AsArray());
+                        CurrentHandles.Clear();
+                    }
+
+                    JobHandle h = default;
+                    try
+                    {
+                        Profiler.BeginSample("JobScheduleInvoker: Start Job " + j.GetType());
+                        h = j.StartJob(CurrentDependency);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogWarning($"Failed to run job {j.GetGameObject().name}! Stack Trace Below:");
+                        Debug.LogWarning(e);
+                    }
+                    finally
+                    {
+                        Profiler.EndSample();
+                    }
+
+                    CurrentHandles.Add(h);
                 }
-                catch (Exception e)
-                {
-                    Debug.LogWarning($"Failed to run job {j.GetGameObject().name}! Stack Trace Below:");
-                    Debug.LogWarning(e);
-                }
-                finally
-                {
-                    Profiler.EndSample();
-                }
-                CurrentHandles.Add(h);
+
+                CurrentDependency = JobHandle.CombineDependencies(CurrentHandles.AsArray());
+                _completer.Job = CurrentDependency;
             }
-            CurrentDependency = JobHandle.CombineDependencies(CurrentHandles.AsArray());
-            _completer.Job = CurrentDependency;
-            CurrentHandles.Dispose();
+            finally
+            {
+                CurrentHandles.Dispose();
+            }
         }
     }
 }

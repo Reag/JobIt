@@ -7,9 +7,11 @@ namespace JobIt.Runtime.Abstract
     /// </summary>
     /// <typeparam name="TInvoker">The IJobInvoker type this class with Register and Withdraw from</typeparam>
     /// <typeparam name="TData">The type of data this IUpdateJob will be expecting</typeparam>
-    public abstract class InvokedUpdateJob<TInvoker,TData> : UpdateJob<TData> where TData : struct  where TInvoker: MonoBehaviour, IJobInvoker
+    public abstract class InvokedUpdateJob<TInvoker, TData> : UpdateJob<TData>
+        where TData : struct where TInvoker : MonoBehaviour, IJobInvoker
     {
         protected TInvoker Invoker;
+
         /// <summary>
         /// This job is considered running with the Invoker is running
         /// </summary>
@@ -22,6 +24,7 @@ namespace JobIt.Runtime.Abstract
             {
                 Invoker = JobScheduleInvoker<TInvoker>.Instance;
             }
+
             Invoker.RegisterJob(this, JobPriority);
         }
 

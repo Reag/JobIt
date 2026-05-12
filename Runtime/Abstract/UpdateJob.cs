@@ -37,14 +37,15 @@ namespace JobIt.Runtime.Abstract
         /// <summary>
         /// Number of Components currently subscribed to this job
         /// </summary>
-        public int JobSize => OwnerList.Count;
+        public int JobSize => _ownerList.Count;
 
-        protected List<Component> OwnerList = new();
+        public IReadOnlyList<Component> OwnerList => _ownerList;
+        private readonly List<Component> _ownerList = new();
         public virtual bool IsRunning => !_isCompleted;
         /// <summary>
         /// Invoked as the final step of completing a job. Data is safe to read at this point
         /// </summary>
-        public Action OnJobComplete;
+        public event Action OnJobComplete;
 
         /// <summary>
         /// Public property to allow user controlled disabling of a job, such as if the game is paused
@@ -199,7 +200,7 @@ namespace JobIt.Runtime.Abstract
                         if (index < 0)
                         {
                             Debug.LogWarning($"Attempted to remove an non existing job element from {GetType()}", this);
-                            return;
+                            break;
                         }
                         RemoveJobDataAndSwapBack(index);
                         RemoveAndSwapBackInternal(index);
@@ -209,8 +210,8 @@ namespace JobIt.Runtime.Abstract
                         UpdateJobData(index, action.Data);
                         break;
                     case JobDataAction.Add:
-                        OwnerList.Add(e);
-                        _hashToIndexLookup.Add(hash, OwnerList.Count - 1);
+                        _ownerList.Add(e);
+                        _hashToIndexLookup.Add(hash, _ownerList.Count - 1);
                         AddJobData(action.Data);
                         break;
                     case JobDataAction.Update:
@@ -237,17 +238,17 @@ namespace JobIt.Runtime.Abstract
 
         private void RemoveAndSwapBackInternal(int index)
         {
-            var hashToRemove = OwnerList[index].GetHashCode();
+            var hashToRemove = _ownerList[index].GetHashCode();
             var lastIndexHash = 0;
-            if (OwnerList.Count > 0)
+            if (_ownerList.Count > 0)
             {
-                lastIndexHash = OwnerList[^1].GetHashCode();
+                lastIndexHash = _ownerList[^1].GetHashCode();
             }
 
             _hashToIndexLookup.Remove(hashToRemove);
             if (_hashToIndexLookup.ContainsKey(lastIndexHash))
                 _hashToIndexLookup[lastIndexHash] = index;
-            OwnerList.RemoveAtSwapBack(index);
+            _ownerList.RemoveAtSwapBack(index);
         }
 
         /// <summary>
@@ -341,7 +342,7 @@ namespace JobIt.Runtime.Abstract
             IsDisposed = true;
             EndJob();
             _actionQueue.Clear();
-            OwnerList.Clear();
+            _ownerList.Clear();
             _hashToIndexLookup.Clear();
             DisposeLogic();
             OnJobComplete = null;
