@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using JobIt.Runtime.Abstract;
 using JobIt.Runtime.Impl.JobScheduler;
+using JobIt.Runtime.Utils;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
@@ -197,5 +198,66 @@ namespace JobIt.Tests.MockClasses
         {
             return JobList.Select(x => x.Job).ToList();
         }
+    }
+
+    /// <summary>
+    /// No-op job whose DisposeNativeContainers throws, to exercise the Dispose catch block.
+    /// </summary>
+    public class MockThrowOnDisposeContainersJob : UpdateJob<int>
+    {
+        protected override void BuildNativeContainers() { }
+        protected override void DisposeNativeContainers() =>
+            throw new System.Exception("boom: dispose containers");
+        protected override void AddJobData(int data) { }
+        protected override int ReadJobDataAtIndex(int index) => 0;
+        protected override void RemoveJobDataAndSwapBack(int index) { }
+        protected override JobHandle ScheduleJob(JobHandle dependsOn = default) => dependsOn;
+        protected override void CompleteJob() { }
+    }
+
+    /// <summary>
+    /// No-op job whose DisposeLogic throws, to exercise the Dispose catch block.
+    /// </summary>
+    public class MockThrowOnDisposeLogicJob : UpdateJob<int>
+    {
+        protected override void BuildNativeContainers() { }
+        protected override void DisposeNativeContainers() { }
+        protected override void DisposeLogic() =>
+            throw new System.Exception("boom: dispose logic");
+        protected override void AddJobData(int data) { }
+        protected override int ReadJobDataAtIndex(int index) => 0;
+        protected override void RemoveJobDataAndSwapBack(int index) { }
+        protected override JobHandle ScheduleJob(JobHandle dependsOn = default) => dependsOn;
+        protected override void CompleteJob() { }
+    }
+
+    /// <summary>
+    /// JobWrapperBase subclass that overrides the internals to no-ops, for isolated state-machine tests.
+    /// </summary>
+    public class MockIsolatedJobWrapper : JobWrapperBase<MockUpdateJob, int>
+    {
+        public int RegisterCount;
+        public int UpdateCount;
+        public int WithdrawCount;
+
+        public MockIsolatedJobWrapper(Component owner, int data) : base(owner, data) { }
+
+        public bool IsRegisteredPublic => isRegistered;
+        public bool DisposedPublic => disposed;
+        public int CurrentDataPublic => currentData;
+
+        protected override void RegisterToJobInternal(int data) => RegisterCount++;
+        protected override void UpdateJobInternal(int data) => UpdateCount++;
+        protected override void WithdrawFromJobInternal() => WithdrawCount++;
+    }
+
+    /// <summary>
+    /// JobWrapperBase subclass that keeps the real scheduler-calling internals, for integration tests.
+    /// </summary>
+    public class MockIntegrationJobWrapper : JobWrapperBase<MockUpdateToUpdateJob, int>
+    {
+        public MockIntegrationJobWrapper(Component owner, int data) : base(owner, data) { }
+        // Intentionally does NOT override the *Internal methods, so the real
+        // UpdateJobScheduler calls execute (covering the base virtual bodies).
     }
 }

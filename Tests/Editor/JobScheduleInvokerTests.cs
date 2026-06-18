@@ -155,5 +155,19 @@ namespace JobIt.Tests.Editor
             //Assert
             Assert.IsTrue(MockJobScheduleInvoker.Instance != null);
         }
+
+        [Test]
+        public void CompleterJob_GetAfterSet_ReturnsAssignedHandle()
+        {
+            //Arrange
+            var handle = default(JobHandle);
+            _invoker.mockCompleter.Job = handle;
+
+            //Act
+            var read = _invoker.mockCompleter.Job; // executes the getter (get => Handle)
+
+            //Assert
+            Assert.IsTrue(read.Equals(handle), "Job getter did not return the assigned handle");
+        }
     }
 }

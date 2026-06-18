@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using JobIt.Runtime.Abstract;
 using UnityEngine;
+using UnityEngine.TestTools;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -16,12 +17,14 @@ namespace JobIt.Runtime.Impl.JobScheduler
         #region Singleton Setup
 
         //This region is for a simple singleton design pattern
+        [ExcludeFromCoverage]
         private UpdateJobScheduler()
         {
         }
 
         private static UpdateJobScheduler Instance => Nested.Lazy;
 
+        [ExcludeFromCoverage]
         private static class Nested
         {
             static Nested()

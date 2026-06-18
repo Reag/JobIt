@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 using JobIt.Tests.MockClasses;
 using NUnit.Framework;
 using UnityEngine;
@@ -283,6 +284,52 @@ namespace JobIt.Tests.Editor
             Assert.IsTrue(_job.ValueList[0] == cVal, "Job at index 0 was not owned by ownerC");
             Assert.IsTrue(_job.ValueList[1] == dVal, "Job at index 1 was not owned by ownerD");
             Assert.IsTrue(_job.ValueList[2] == eVal, "Job at index 2 was not owned by ownerE");
+        }
+
+        [Test]
+        public void OwnerList_AfterRegister_ContainsOwner()
+        {
+            //Arrange
+            var owner = _mockObject.AddComponent<MockMonoBehaviour>();
+
+            //Act
+            _job.RegisterItem(owner, 1);
+            _job.StartJob();
+            _job.EndJob();
+
+            //Assert
+            Assert.IsTrue(_job.OwnerList.Count == 1, "OwnerList did not contain the registered owner");
+            Assert.IsTrue(_job.OwnerList[0] == owner, "OwnerList[0] was not the registered owner");
+        }
+
+        [Test]
+        public void Dispose_DisposeContainersThrows_LoggedAndSwallowed()
+        {
+            //Arrange
+            var job = _mockObject.AddComponent<MockThrowOnDisposeContainersJob>();
+            job.Awake();
+
+            //Act
+            job.Dispose();
+
+            //Assert
+            LogAssert.Expect(LogType.Error, new Regex("Error disposing of native containers in job"));
+            Assert.IsTrue(job.IsDisposed, "Job should be marked disposed even when DisposeNativeContainers throws");
+        }
+
+        [Test]
+        public void Dispose_DisposeLogicThrows_LoggedAndSwallowed()
+        {
+            //Arrange
+            var job = _mockObject.AddComponent<MockThrowOnDisposeLogicJob>();
+            job.Awake();
+
+            //Act
+            job.Dispose();
+
+            //Assert
+            LogAssert.Expect(LogType.Error, new Regex("Error performing DisposeLogic in job"));
+            Assert.IsTrue(job.IsDisposed, "Job should be marked disposed even when DisposeLogic throws");
         }
     }
 }

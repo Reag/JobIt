@@ -274,5 +274,40 @@ namespace JobIt.Tests.Runtime
             Assert.IsTrue(data != 1, "Job did not run");
             LogAssert.NoUnexpectedReceived();
         }
+
+        [Test]
+        public void TryReadJobData_NoJobRegistered_FalseAndDefault()
+        {
+            //Arrange
+            var behaviour = GetMockMonoBehaviour();
+
+            //Act
+            var read = UpdateJobScheduler.TryReadJobData<MockUpdateToUpdateJob, int>(behaviour, out var data);
+
+            //Assert
+            Assert.IsFalse(read, "TryReadJobData returned true for a job that was never registered");
+            Assert.IsTrue(data == default, "TryReadJobData leaked non-default data for a missing job");
+        }
+
+        [UnityTest]
+        public IEnumerator CleanJobs_DestroyedJobInDictionary_SkippedNoError()
+        {
+            //Arrange
+            var behaviour = GetMockMonoBehaviour();
+            UpdateJobScheduler.Register<MockUpdateToUpdateJob, int>(behaviour, 1);
+            yield return new WaitForEndOfFrame();
+            var jobObj = UpdateJobScheduler.GetJobObject<MockUpdateToUpdateJob, int>();
+            Assert.IsTrue(jobObj != null, "Setup failed: job was not created");
+
+            //Act
+            Object.DestroyImmediate(jobObj.gameObject); // dictionary now holds a Unity-null reference
+            yield return null;
+            UpdateJobScheduler.CleanJobs(); // iterates; hits `if (j == null) continue;`
+
+            //Assert
+            LogAssert.NoUnexpectedReceived();
+            Assert.IsTrue(UpdateJobScheduler.GetJobObject<MockUpdateToUpdateJob, int>() == null,
+                "CleanJobs did not clear the job dictionary");
+        }
     }
 }
