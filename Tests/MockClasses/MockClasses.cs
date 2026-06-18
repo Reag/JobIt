@@ -202,12 +202,17 @@ namespace JobIt.Tests.MockClasses
 
     /// <summary>
     /// No-op job whose DisposeNativeContainers throws, to exercise the Dispose catch block.
+    /// Records whether DisposeLogic still ran afterward, so tests can verify Dispose continues
+    /// past the exception (catch isolation).
     /// </summary>
     public class MockThrowOnDisposeContainersJob : UpdateJob<int>
     {
+        public bool DisposeLogicRan;
+
         protected override void BuildNativeContainers() { }
         protected override void DisposeNativeContainers() =>
             throw new System.Exception("boom: dispose containers");
+        protected override void DisposeLogic() => DisposeLogicRan = true;
         protected override void AddJobData(int data) { }
         protected override int ReadJobDataAtIndex(int index) => 0;
         protected override void RemoveJobDataAndSwapBack(int index) { }
@@ -217,11 +222,15 @@ namespace JobIt.Tests.MockClasses
 
     /// <summary>
     /// No-op job whose DisposeLogic throws, to exercise the Dispose catch block.
+    /// Records whether DisposeNativeContainers ran first, so tests can verify the earlier
+    /// dispose steps completed before the throwing one.
     /// </summary>
     public class MockThrowOnDisposeLogicJob : UpdateJob<int>
     {
+        public bool DisposeContainersRan;
+
         protected override void BuildNativeContainers() { }
-        protected override void DisposeNativeContainers() { }
+        protected override void DisposeNativeContainers() => DisposeContainersRan = true;
         protected override void DisposeLogic() =>
             throw new System.Exception("boom: dispose logic");
         protected override void AddJobData(int data) { }

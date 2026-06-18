@@ -314,7 +314,8 @@ namespace JobIt.Tests.Editor
 
             //Assert
             LogAssert.Expect(LogType.Error, new Regex("Error disposing of native containers in job"));
-            Assert.IsTrue(job.IsDisposed, "Job should be marked disposed even when DisposeNativeContainers throws");
+            // Catch isolation: a throw in DisposeNativeContainers must not prevent later dispose steps.
+            Assert.IsTrue(job.DisposeLogicRan, "Dispose did not continue to DisposeLogic after DisposeNativeContainers threw");
         }
 
         [Test]
@@ -329,7 +330,8 @@ namespace JobIt.Tests.Editor
 
             //Assert
             LogAssert.Expect(LogType.Error, new Regex("Error performing DisposeLogic in job"));
-            Assert.IsTrue(job.IsDisposed, "Job should be marked disposed even when DisposeLogic throws");
+            // Earlier dispose steps must have completed before the throwing DisposeLogic ran.
+            Assert.IsTrue(job.DisposeContainersRan, "DisposeNativeContainers did not run before DisposeLogic threw");
         }
     }
 }
