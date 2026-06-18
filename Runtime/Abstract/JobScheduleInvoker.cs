@@ -110,10 +110,12 @@ namespace JobIt.Runtime.Abstract
         /// Adds a particular Completer to this Invoker. Said Completer will manege ensuring the jobs complete according to its internal strategy.
         /// </summary>
         /// <typeparam name="T">The type of Completer to add</typeparam>
-        protected virtual void AddCompleter<T>() where T : JobScheduleCompleter
+        protected virtual T AddCompleter<T>() where T : JobScheduleCompleter
         {
-            _completer = gameObject.AddComponent<T>();
+            var completer = gameObject.AddComponent<T>();
+            _completer = completer;
             _completer.OnComplete += OnJobComplete;
+            return completer;
         }
 
         /// <summary>

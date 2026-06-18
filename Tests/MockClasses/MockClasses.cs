@@ -18,7 +18,8 @@ namespace JobIt.Tests.MockClasses
             ValueList = new NativeList<int>(Allocator.Persistent);
         }
 
-        protected override void DisposeLogic()
+        /// <inheritdoc />
+        protected override void DisposeNativeContainers()
         {
             ValueList.Dispose();
         }
@@ -71,13 +72,14 @@ namespace JobIt.Tests.MockClasses
         {
             ValueList = new NativeList<int>(Allocator.Persistent);
         }
-        protected override int JobPriority => 0;
 
-        protected override void DisposeLogic()
+        /// <inheritdoc />
+        protected override void DisposeNativeContainers()
         {
-            base.DisposeLogic();
             ValueList.Dispose();
         }
+
+        protected override int JobPriority => 0;
 
         protected override void AddJobData(int data)
         {
@@ -123,6 +125,12 @@ namespace JobIt.Tests.MockClasses
         protected override void BuildNativeContainers()
         {
 
+        }
+
+        /// <inheritdoc />
+        protected override void DisposeNativeContainers()
+        {
+            
         }
 
         protected override void AddJobData(int data)
@@ -177,8 +185,7 @@ namespace JobIt.Tests.MockClasses
         public void SetupCompleter()
         {
             base.Awake();
-            AddCompleter<MockJobScheduleCompleter>();
-            mockCompleter = GetComponent<MockJobScheduleCompleter>();
+            mockCompleter = AddCompleter<MockJobScheduleCompleter>();
         }
 
         public void DeactivateCompleter()

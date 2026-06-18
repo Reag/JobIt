@@ -1,6 +1,6 @@
 {
-    "name": "DMS.JobIt.Tests",
-    "rootNamespace": "",
+    "name": "DMS.JobIt.Tests.Runtime",
+    "rootNamespace": "JobIt.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
@@ -16,9 +16,7 @@
         "nunit.framework.dll"
     ],
     "autoReferenced": false,
-    "defineConstraints": [
-        "UNITY_INCLUDE_TESTS"
-    ],
+    "defineConstraints": [],
     "versionDefines": [],
     "noEngineReferences": false
 }

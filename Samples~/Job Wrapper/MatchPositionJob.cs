@@ -17,8 +17,6 @@ public class MatchPositionJob : UpdateToUpdateJob<MatchPositionJobElement>
     private TransformAccessArray _nativeParents;
     private NativeList<Matrix4x4> _localToWorlds;
 
-    private JobHandle _handle;
-
     protected override void BuildNativeContainers()
     {
         _nativeChildren = new TransformAccessArray(1000);
@@ -26,9 +24,9 @@ public class MatchPositionJob : UpdateToUpdateJob<MatchPositionJobElement>
         _localToWorlds = new NativeList<Matrix4x4>(Allocator.Persistent);
     }
 
-    protected override void DisposeLogic()
+    /// <inheritdoc />
+    protected override void DisposeNativeContainers()
     {
-        _handle.Complete();
         if (_nativeChildren.isCreated) _nativeChildren.Dispose();
         if (_nativeParents.isCreated) _nativeParents.Dispose();
         if (_localToWorlds.IsCreated) _localToWorlds.Dispose();
@@ -36,16 +34,18 @@ public class MatchPositionJob : UpdateToUpdateJob<MatchPositionJobElement>
 
     protected override JobHandle ScheduleJob(JobHandle dependsOn = default(JobHandle))
     {
-        var load = new LoadParents {
+        var load = new LoadParents
+        {
             LocalToWorlds = _localToWorlds.AsArray()
         };
-        _handle = load.ScheduleReadOnly(_nativeParents, 32, dependsOn);
+        var handle = load.ScheduleReadOnly(_nativeParents, 32, dependsOn);
 
-        var job = new SetChildren {
+        var job = new SetChildren
+        {
             LocalToWorlds = _localToWorlds.AsArray()
         };
-        _handle = job.Schedule(_nativeChildren, _handle);
-        return _handle;
+        handle = job.Schedule(_nativeChildren, handle);
+        return handle;
     }
 
     protected override void AddJobData(MatchPositionJobElement e)
@@ -77,6 +77,7 @@ public class MatchPositionJob : UpdateToUpdateJob<MatchPositionJobElement>
     private struct LoadParents : IJobParallelForTransform
     {
         public NativeArray<Matrix4x4> LocalToWorlds;
+
         public void Execute(int index, TransformAccess transform)
         {
             if (transform.isValid)

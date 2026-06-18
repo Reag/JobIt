@@ -1,33 +1,33 @@
 {
-    "name": "com.dms.jobit",
-    "version": "1.0.3",
-    "displayName": "JobIt",
-    "description": "A Unity JobSystem Manager",
-    "unity": "2022.3",
-    "unityRelease": "0f1",
-    "dependencies": {
-        "com.unity.burst": "1.8.9",
-        "com.unity.collections": "1.2.4"
+  "name": "com.dms.jobit",
+  "version": "1.0.4",
+  "displayName": "JobIt",
+  "description": "A Unity JobSystem Manager",
+  "unity": "6000.0",
+  "unityRelease": "0f1",
+  "dependencies": {
+    "com.unity.burst": "1.8.9",
+    "com.unity.collections": "1.2.4"
+  },
+  "keywords": [
+    "burst",
+    "dots",
+    "jobsystem"
+  ],
+  "author": {
+    "name": "Gilad O.",
+    "email": "gilado@ostrin.org"
+  },
+  "samples": [
+    {
+      "displayName": "Inherit Transform Sample",
+      "description": "Contains a sample job that allows for a virtual 'owner' in the transform hierarchy",
+      "path": "Samples~/Inherit Transform"
     },
-    "keywords": [
-        "burst",
-        "dots",
-        "jobsystem"
-    ],
-    "author": {
-        "name": "Gilad O.",
-        "email": "gilado@ostrin.org"
-    },
-    "samples": [
-        {
-            "displayName": "Inherit Transform Sample",
-            "description": "Contains a sample job that allows for a virtual 'owner' in the transform hierarchy",
-            "path": "Samples~/Inherit Transform"
-        },
-		{
-            "displayName": "Job Wrapper Sample",
-            "description": "Contains a sample job wrapper that allows for easier job management",
-            "path": "Samples~/Job Wrapper"
-        }
-    ]
+    {
+      "displayName": "Job Wrapper Sample",
+      "description": "Contains a sample job wrapper that allows for easier job management",
+      "path": "Samples~/Job Wrapper"
+    }
+  ]
 }
