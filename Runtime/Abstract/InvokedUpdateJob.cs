@@ -10,22 +10,22 @@ namespace JobIt.Runtime.Abstract
     public abstract class InvokedUpdateJob<TInvoker, TData> : UpdateJob<TData>
         where TData : struct where TInvoker : MonoBehaviour, IJobInvoker
     {
-        protected TInvoker Invoker;
+        private TInvoker _invoker;
 
         /// <summary>
         /// This job is considered running with the Invoker is running
         /// </summary>
-        public sealed override bool IsRunning => Invoker.IsRunning;
+        public sealed override bool IsRunning => _invoker.IsRunning;
 
         public sealed override void Awake()
         {
             base.Awake();
-            if (Invoker == null) //Subscribe to the singleton of the Invoker
+            if (_invoker == null) //Subscribe to the singleton of the Invoker
             {
-                Invoker = JobScheduleInvoker<TInvoker>.Instance;
+                _invoker = JobScheduleInvoker<TInvoker>.Instance;
             }
 
-            Invoker.RegisterJob(this, JobPriority);
+            _invoker.RegisterJob(this, JobPriority);
         }
 
         protected sealed override void CompleteJob()
@@ -33,10 +33,16 @@ namespace JobIt.Runtime.Abstract
             //Do nothing, as this particular job is completed by the TInvoker
         }
 
-        protected override void DisposeLogic()
+        protected sealed override void DisposeLogic()
         {
             //When disposing of this job, be sure to withdraw from the Invoker!
-            Invoker.WithdrawJob(this);
+            _invoker.WithdrawJob(this);
+            DisposeLogicInternal();
         }
+
+        /// <summary>
+        /// Put custom dispose logic here, instead of the normal DisposeLogic function
+        /// </summary>
+        protected virtual void DisposeLogicInternal(){ }
     }
 }

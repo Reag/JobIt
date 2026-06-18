@@ -274,5 +274,46 @@ namespace JobIt.Tests.Runtime
             Assert.IsTrue(data != 1, "Job did not run");
             LogAssert.NoUnexpectedReceived();
         }
+
+        [Test]
+        public void TryReadJobData_NoJobRegistered_FalseAndDefault()
+        {
+            //Arrange
+            var behaviour = GetMockMonoBehaviour();
+
+            //Act
+            var read = UpdateJobScheduler.TryReadJobData<MockUpdateToUpdateJob, int>(behaviour, out var data);
+
+            //Assert
+            Assert.IsFalse(read, "TryReadJobData returned true for a job that was never registered");
+            Assert.IsTrue(data == default, "TryReadJobData leaked non-default data for a missing job");
+        }
+
+        [UnityTest]
+        public IEnumerator CleanJobs_AfterJobGameObjectDestroyed_ClearsWithoutError()
+        {
+            // Note: this does NOT exercise the `if (j == null) continue;` branch in CleanJobs.
+            // That dictionary value is typed as the IUpdateJob interface, so `== null` is a plain
+            // reference check; a destroyed-but-not-GC'd component is not reference-null, and a true
+            // null is never inserted. The branch is unreachable through the public API. This test
+            // instead verifies CleanJobs handles an already-destroyed job GameObject without error.
+
+            //Arrange
+            var behaviour = GetMockMonoBehaviour();
+            UpdateJobScheduler.Register<MockUpdateToUpdateJob, int>(behaviour, 1);
+            yield return new WaitForEndOfFrame();
+            var jobObj = UpdateJobScheduler.GetJobObject<MockUpdateToUpdateJob, int>();
+            Assert.IsTrue(jobObj != null, "Setup failed: job was not created");
+
+            //Act
+            Object.DestroyImmediate(jobObj.gameObject);
+            yield return null;
+            UpdateJobScheduler.CleanJobs();
+
+            //Assert
+            LogAssert.NoUnexpectedReceived();
+            Assert.IsTrue(UpdateJobScheduler.GetJobObject<MockUpdateToUpdateJob, int>() == null,
+                "CleanJobs did not clear the job dictionary");
+        }
     }
 }

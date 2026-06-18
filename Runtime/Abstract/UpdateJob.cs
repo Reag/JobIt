@@ -42,6 +42,7 @@ namespace JobIt.Runtime.Abstract
         public IReadOnlyList<Component> OwnerList => _ownerList;
         private readonly List<Component> _ownerList = new();
         public virtual bool IsRunning => !_isCompleted;
+
         /// <summary>
         /// Invoked as the final step of completing a job. Data is safe to read at this point
         /// </summary>
@@ -51,28 +52,55 @@ namespace JobIt.Runtime.Abstract
         /// Public property to allow user controlled disabling of a job, such as if the game is paused
         /// </summary>
         public virtual bool CanRunJob => true;
+
         public bool IsDisposed { get; private set; }
 
         /// <summary>
         /// Defines the execution order of the job when managed by the UpdateJobScheduler. Lower values will execute first
         /// </summary>
         protected virtual int JobPriority { get; } = 0;
+
         private JobHandle _handle = default;
         private bool _isCompleted = true;
+
         private readonly Queue<QueueItem> _actionQueue = new();
+
         //This maps HashCodes to list indexes
         private readonly Dictionary<int, int> _hashToIndexLookup = new();
 
+        [ExcludeFromCoverage]
+        public virtual void Awake()
+        {
+            BuildNativeContainers();
+#if UNITY_EDITOR
+            //We use this to prevent memory leaks when unexpectedly entering or exiting playmode.
+            UnityEditor.EditorApplication.playModeStateChanged += PlayModeStateChange;
+#endif
+        }
+
+        [ExcludeFromCoverage] // Ensure safe exit when running in the editor
+        protected virtual void OnDestroy()
+        {
+            Dispose();
+        }
+
         /// <summary>
-        /// Called on Awake. This function should build all the native containers that the UpdateJob needs.
+        /// Called on Awake by default. This function should build all the native containers that the UpdateJob needs.
         /// Anything built here should be Disposed of in the DisposeLogic function.
         /// </summary>
         protected abstract void BuildNativeContainers();
 
         /// <summary>
-        /// Called when the job is disposed. Be sure to clean up any NativeContainers allocated or you will have a memory leak!
+        /// Called when the job is disposed. This is normally caused by OnDestroy. Be sure to dispose of any native containers you used here
         /// </summary>
-        protected abstract void DisposeLogic();
+        protected abstract void DisposeNativeContainers();
+
+        /// <summary>
+        /// Called when the job is disposed. Can be used for custom dispose logic
+        /// </summary>
+        protected virtual void DisposeLogic()
+        {
+        }
 
         /// <summary>
         /// Remove a registered Component from the UpdateJob. Takes effect the next time the job is scheduled
@@ -118,11 +146,13 @@ namespace JobIt.Runtime.Abstract
                 data = default;
                 return false;
             }
+
             if (_hashToIndexLookup.TryGetValue(o.GetHashCode(), out var i))
             {
                 data = ReadJobDataAtIndex(i);
                 return true;
             }
+
             data = default;
             return false;
         }
@@ -167,7 +197,7 @@ namespace JobIt.Runtime.Abstract
             _handle.Complete(); //Ensure the previous run of this job is complete
             if (IsDisposed || !CanRunJob) return dependsOn;
             //For jobs that are manually invoked, rather than managed through the invoker
-            if(_actionQueue.Count > 0) ProcessActionQueue();
+            if (_actionQueue.Count > 0) ProcessActionQueue();
             _handle = ScheduleJob(dependsOn);
             _isCompleted = false;
             return _handle;
@@ -190,8 +220,10 @@ namespace JobIt.Runtime.Abstract
                         RemoveJobDataAndSwapBack(i);
                         RemoveAndSwapBackInternal(i);
                     }
+
                     continue;
                 }
+
                 //index -1 -> not in HashMap
                 var index = _hashToIndexLookup.GetValueOrDefault(hash, -1);
                 switch (action.JobAction)
@@ -202,6 +234,7 @@ namespace JobIt.Runtime.Abstract
                             Debug.LogWarning($"Attempted to remove an non existing job element from {GetType()}", this);
                             break;
                         }
+
                         RemoveJobDataAndSwapBack(index);
                         RemoveAndSwapBackInternal(index);
                         break;
@@ -215,7 +248,8 @@ namespace JobIt.Runtime.Abstract
                         AddJobData(action.Data);
                         break;
                     case JobDataAction.Update:
-                        Debug.LogWarning($"Attempted to update job data for an unregistered job element in {GetType()}", this);
+                        Debug.LogWarning($"Attempted to update job data for an unregistered job element in {GetType()}",
+                            this);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
@@ -295,21 +329,12 @@ namespace JobIt.Runtime.Abstract
         /// </summary>
         protected abstract void CompleteJob();
 
-        [ExcludeFromCoverage]
-        public virtual void Awake()
-        {
-            BuildNativeContainers();
-#if UNITY_EDITOR
-            //We use this to prevent memory leaks when unexpectedly entering or exiting playmode.
-            UnityEditor.EditorApplication.playModeStateChanged += PlayModeStateChange;
-#endif
-        }
-
 #if UNITY_EDITOR
         [ExcludeFromCoverage]
         private void PlayModeStateChange(UnityEditor.PlayModeStateChange state)
         {
-            if (state is UnityEditor.PlayModeStateChange.EnteredPlayMode or UnityEditor.PlayModeStateChange.ExitingEditMode) return;
+            if (state is UnityEditor.PlayModeStateChange.EnteredPlayMode
+                or UnityEditor.PlayModeStateChange.ExitingEditMode) return;
             try
             {
                 UnityEditor.EditorApplication.playModeStateChanged -= PlayModeStateChange;
@@ -327,12 +352,6 @@ namespace JobIt.Runtime.Abstract
         }
 #endif
 
-        [ExcludeFromCoverage] // Ensure safe exit when running in the editor
-        protected virtual void OnDestroy()
-        {
-            Dispose();
-        }
-
         /// <summary>
         /// Dispose of this job, cleaning up all data associated with it
         /// </summary>
@@ -340,11 +359,37 @@ namespace JobIt.Runtime.Abstract
         {
             if (IsDisposed) return;
             IsDisposed = true;
-            EndJob();
+            try
+            {
+                EndJob();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error ending job {GetType().Name}: {e}");
+            }
+
             _actionQueue.Clear();
             _ownerList.Clear();
             _hashToIndexLookup.Clear();
-            DisposeLogic();
+
+            try
+            {
+                DisposeNativeContainers();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error disposing of native containers in job {GetType().Name}: {e}");
+            }
+
+            try
+            {
+                DisposeLogic();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error performing DisposeLogic in job {GetType().Name}: {e}");
+            }
+
             OnJobComplete = null;
         }
     }

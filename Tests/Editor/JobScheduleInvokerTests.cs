@@ -132,6 +132,7 @@ namespace JobIt.Tests.Editor
             //Assert
             Assert.IsTrue(_invoker.MockJobListCount == 3, "Not all jobs added to the Invoker!");
             var jobs = _invoker.GetJobList();
+            Assert.IsTrue(jobs.Count == 3, "Not all jobs in the job list!");
             Assert.IsTrue(job1.TryReadItem(_invoker, out int v) && v == 0, "Job1 did not execute correctly");
             Assert.IsTrue(job2.TryReadItem(_invoker, out v) && v == 2, "Job1 did not execute correctly");
             Assert.IsTrue(job3.TryReadItem(_invoker, out v) && v == 6, "Job1 did not execute correctly");
@@ -153,6 +154,20 @@ namespace JobIt.Tests.Editor
 
             //Assert
             Assert.IsTrue(MockJobScheduleInvoker.Instance != null);
+        }
+
+        [Test]
+        public void CompleterJob_GetAfterSet_ReturnsAssignedHandle()
+        {
+            //Arrange
+            var handle = default(JobHandle);
+            _invoker.mockCompleter.Job = handle;
+
+            //Act
+            var read = _invoker.mockCompleter.Job; // executes the getter (get => Handle)
+
+            //Assert
+            Assert.IsTrue(read.Equals(handle), "Job getter did not return the assigned handle");
         }
     }
 }

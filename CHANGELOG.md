@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.4] - 18-06-26
+
+- Changed dispose logic of Invoked Jobs to improve developer experience. Forgetting to call base.DisposeLogic() is no longer needed
+- Add test cases for JobWrapper classes
+
 ## [1.0.3] - 12-05-26
 
 - Addition of a README.md and LICENSE.md
