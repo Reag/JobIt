@@ -4,9 +4,9 @@ using UnityEngine;
 namespace JobIt.Runtime.Impl.JobScheduler
 {
     /// <summary>
-    /// An example JobScheduleInvoker. It will start its jobs earlier in LateUpdate, and complete them by the end of LateUpdate
+    /// An example JobScheduleInvoker. It will start its jobs later on in LateUpdate, and complete them by the end of LateUpdate
     /// </summary>
-    [DefaultExecutionOrder(-100)]
+    [DefaultExecutionOrder(6)]
     public class LateUpdateJobInvoker : JobScheduleInvoker<LateUpdateJobInvoker>, IJobInvoker
     {
         protected override void Awake()
